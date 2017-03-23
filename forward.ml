@@ -2,29 +2,52 @@
 open Lwt
 open Dns
 open Core.Std
-open Cohttp
-open Cohttp_lwt_unix
 
 let lookup_table = Hashtbl.create ~hashable:String.hashable ();;
 
-let http_server name ip =
-  let callback _conn req body =
-    let uri = req |> Request.uri |> Uri.to_string in
-    let meth = req |> Request.meth |> Code.string_of_method in
-    let headers = req |> Request.headers |> Header.to_string in
-    body |> Cohttp_lwt_body.to_string >|= (fun body ->
-      (Printf.sprintf "Uri: %s\nMethod: %s\nHeaders\nHeaders: %s\nBody: %s"
-         uri meth headers body))
-    >>= (fun body -> Server.respond_string ~status:`OK ~body ())
+let http_server ~body _ req =
+  let open Async.Std in
+  let open Cohttp in
+  let open Cohttp_async in
+  match req |> Cohttp.Request.meth with
+  | `POST ->
+        (Body.to_string body) >>= (fun body ->
+          Log.Global.info "Body: %s" body;
+          Server.respond `OK)
+  | _ -> Server.respond `Method_not_allowed;;
+
+let http_listener name ip =
+  let open Async.Std in
+  let open Async_extra.Tcp in
+  let open Cohttp in
+  let open Cohttp_async in
+  let socket_builder port =
+    Where_to_listen.create
+      ~socket_type:Socket.Type.tcp 
+      ~address:(
+        Socket.Address.Inet.create (ip |> Ipaddr.V4.to_int32 |> Async.Std.Unix.Inet_addr.inet4_addr_of_int32) port
+      )
+      ~listening_on:Socket.Address.Inet.to_host_and_port
   in
+  Async_unix.Process.create_exn
+    ~prog:"/sbin/ip"
+    ~args:["address"; "add"; Ipaddr.V4.to_string ip; "dev"; "lo"] ()
+  >>= Async_unix.Process.wait
+  >>= fun _ ->
   Server.create
-    ~on_exn:(fun _ -> ())
-    ~mode:(`TLS (
+    ~mode:(`OpenSSL (
         `Crt_file_path "/etc/ssl/certs/ssl-cert-snakeoil.pem",
-        `Key_file_path "/etc/ssl/private/ssl-cert-snakeoil.key",
-        `No_password,
-        `Port 443 )) 
-    (Server.make  ~callback ())
+        `Key_file_path "/etc/ssl/private/ssl-cert-snakeoil.key"
+    ))
+    (socket_builder 443)
+    http_server
+  >>= fun _ ->
+  Server.create
+    ~mode:`TCP
+    (socket_builder 80)
+    http_server
+  >>= fun _ -> Deferred.never ();;
+
 
 let empty_response = {
   Dns.Query.rcode=Dns.Packet.NoError;
@@ -37,7 +60,7 @@ let empty_response = {
 let generator name =
   let ip = (Ipaddr.V4.of_int32 (Random.int32 Int32.max_value))
   in
-  let () = (Lwt.async (fun () -> http_server name ip))
+  let () = http_listener name ip |> ignore
 in
 {
   empty_response with
@@ -60,6 +83,8 @@ let process ~src ~dst packet =
           Hashtbl.find_or_add lookup_table name ~default:(fun () -> generator name) |> Option.some |> return
       | [_] -> return (Some empty_response)
       | _::_::_ -> return None;;
+
+Thread.create Async.Std.Scheduler.go () |> ignore;;
 
 let () =
     Lwt_main.run (  
