@@ -1,7 +1,7 @@
 all: forward
 
 forward: forward.ml
-	ocamlfind ocamlopt forward.ml -package lwt,dns.lwt,core -thread -linkpkg -g -o forward
+	ocamlfind ocamlopt forward.ml -package lwt,dns.lwt,core,cohttp.lwt -thread -linkpkg -g -o forward
 	sudo chown root forward
 	sudo chmod +s forward
 
