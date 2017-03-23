@@ -1,9 +1,9 @@
-all: forward
+all: internot
 
-forward: forward.ml
-	ocamlfind ocamlopt forward.ml -package lwt,dns.lwt,core,cohttp.async,async -thread -linkpkg -g -o forward
-	sudo chown root forward
-	sudo chmod +s forward
+internot: internot.ml
+	ocamlfind ocamlopt internot.ml -package lwt,dns.lwt,core,cohttp.async,async -thread -linkpkg -g -o internot
+	sudo chown root internot
+	sudo chmod +s internot
 
 clean:
-	rm -f forward forward.cmi forward.cmx forward.o
+	rm -f internot internot.cmi internot.cmx internot.o
