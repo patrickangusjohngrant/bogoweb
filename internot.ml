@@ -14,6 +14,7 @@ let http_server ~body _ req =
         (Body.to_string body) >>= (fun body ->
           Log.Global.info "Body: %s" body;
           Server.respond `OK)
+  | `GET -> Server.respond_string ~status:`OK (String.make (Random.int 1000) 'a')
   | _ -> Server.respond `Method_not_allowed;;
 
 let http_listener name ip =
