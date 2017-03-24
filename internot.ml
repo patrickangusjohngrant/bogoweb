@@ -22,6 +22,8 @@ let http_listener name ip =
   let open Async_extra.Tcp in
   let open Cohttp in
   let open Cohttp_async in
+  let cert_dir = "/tmp/certs/" ^ name
+  in
   let socket_builder port =
     Where_to_listen.create
       ~socket_type:Socket.Type.tcp 
@@ -34,6 +36,18 @@ let http_listener name ip =
     ~prog:"/sbin/ip"
     ~args:["address"; "add"; Ipaddr.V4.to_string ip; "dev"; "lo"] ()
   >>= Async_unix.Process.wait
+  >>= fun _ -> Unix.mkdir ~p:() cert_dir
+  >>= fun _ -> Async_unix.Process.create_exn
+    ~prog:"/usr/bin/openssl"
+    ~args:[
+      "req";
+      "-nodes";
+      "-newkey"; "rsa:512";
+      "-keyout"; cert_dir ^ "/key.out";
+      "-out"; cert_dir ^ "/csr.out";
+      "-subj";
+      "/C=GB/ST=patrick/L=patrick/O=patrick/OU=Patrick Department/CN="^name]
+      ()
   >>= fun _ ->
   Server.create
     ~mode:(`OpenSSL (

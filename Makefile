@@ -12,6 +12,6 @@ run: internot tidyips
 	echo nameserver 127.0.0.1 | sudo tee /etc/resolv.conf
 	./internot
 
-clean:
+clean: tidyips
 	echo nameserver 127.0.1.1 | sudo tee /etc/resolv.conf
 	rm -f internot internot.cmi internot.cmx internot.o
