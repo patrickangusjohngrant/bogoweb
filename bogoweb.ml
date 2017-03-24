@@ -88,7 +88,7 @@ in
   }];
 };;
 
-let process ~src ~dst packet =
+let dns_process ~src ~dst packet =
       let open Packet in
       match packet.questions with
       | [] -> return None; 
@@ -103,5 +103,5 @@ Thread.create Async.Std.Scheduler.go () |> ignore;;
 
 let () =
     Lwt_main.run (  
-        let processor = ((Dns_server.processor_of_process process) :> (module Dns_server.PROCESSOR)) in 
+        let processor = ((Dns_server.processor_of_process dns_process) :> (module Dns_server.PROCESSOR)) in 
         Dns_server_unix.serve_with_processor ~address:"127.0.0.1" ~port:53 ~processor)
