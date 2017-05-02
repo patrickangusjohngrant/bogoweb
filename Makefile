@@ -38,7 +38,7 @@ run: bogoweb tidyips bogoca
 	sudo ./bogoweb
 
 clean: tidyips
-	echo nameserver 127.0.1.1 | sudo tee /etc/resolv.conf
+	echo nameserver 127.0.0.53 | sudo tee /etc/resolv.conf
 	rm -f bogoweb bogoweb.cmi bogoweb.cmx bogoweb.o
 	sudo rm -rf /tmp/certs
 

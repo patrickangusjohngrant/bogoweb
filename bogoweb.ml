@@ -1,4 +1,3 @@
-(* Forwarding DNS server example. Looks up query locally first then forwards to another resolver. *)
 open Lwt
 open Dns
 open Core.Std;;
@@ -11,11 +10,6 @@ let random_status () = match Random.int 10 with
   | 2     -> `Forbidden
   | _ -> `OK
 
-(* TODO: make this do more random stuff:
- - sleep
- - fail
- - fail with different things (403, 401, 500, etc)
-*)
 let http_server ~body _ req =
   let open Async.Std in
   let open Cohttp in
@@ -118,8 +112,19 @@ let empty_response = {
   Dns.Query.answer=[];
 }
 
+let rec random_ip () = (
+    let randint = Random.int32 Int32.max_value
+    in
+    let firstoctet = Int32.shift_right randint 24
+    in
+    match firstoctet with
+    | 0l
+    | 10l -> (random_ip ())
+    | _ -> Ipaddr.V4.of_int32 randint
+);;
+
 let generator name =
-  let ip = (Ipaddr.V4.of_int32 (Random.int32 Int32.max_value))
+  let ip = random_ip ()
   in
   let mutex = Lwt_mutex.create ()
   in 
